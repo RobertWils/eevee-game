@@ -740,18 +740,25 @@ function showEndWon(){
 }
 
 // ===== ONLINE SCORES =====
+// Uses window.storage (Claude.ai shared) when available, falls back to localStorage
 const HS_KEY='eevee_hs_v2_';
+const hasCloudStorage=typeof window.storage!=='undefined'&&window.storage!==null;
+
 async function saveScore(name,sc,diff,mode){
   try{
     const existing=await loadScores(diff);
     const entry={name,score:sc,mode,date:new Date().toLocaleDateString('nl-NL'),ts:Date.now()};
     const updated=[...existing,entry].sort((a,b)=>b.score-a.score).slice(0,10);
-    await window.storage.set(HS_KEY+diff,JSON.stringify(updated),true);
+    const json=JSON.stringify(updated);
+    if(hasCloudStorage){await window.storage.set(HS_KEY+diff,json,true);}
+    else{localStorage.setItem(HS_KEY+diff,json);}
   }catch(e){console.warn('Score save failed:',e);}
 }
 async function loadScores(diff){
-  try{const r=await window.storage.get(HS_KEY+diff,true);return r?JSON.parse(r.value):[];}
-  catch(e){return[];}
+  try{
+    if(hasCloudStorage){const r=await window.storage.get(HS_KEY+diff,true);return r?JSON.parse(r.value):[];}
+    else{const r=localStorage.getItem(HS_KEY+diff);return r?JSON.parse(r):[];}
+  }catch(e){return[];}
 }
 
 let currentHSDiff='easy';
