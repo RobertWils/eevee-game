@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eevee's Word Adventure</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;900&display=swap');
+:root { --pixel:#ffde59;--red:#e74c3c;--green:#2ecc71;--blue:#3498db;--purple:#9b59b6;--white:#f0f0f0; }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:#1a1a2e;color:var(--white);overflow:hidden;height:100vh;width:100vw;}
+.pixel-font{font-family:'Press Start 2P',monospace;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10;transition:opacity 0.3s;}
+.screen.hidden{opacity:0;pointer-events:none;}
+#titleScreen{background:linear-gradient(180deg,#0f0c29 0%,#302b63 50%,#24243e 100%);}
+.title{font-family:'Press Start 2P',monospace;font-size:clamp(13px,2.8vw,25px);color:var(--pixel);text-shadow:3px 3px 0 #c0a000,6px 6px 0 #80600080;text-align:center;line-height:1.7;animation:titlePulse 2s ease-in-out infinite;}
+@keyframes titlePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+.eevee-big{font-size:68px;animation:bounce 1s ease-in-out infinite;filter:drop-shadow(0 0 18px #ffde5988);}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-11px)}}
+.btn{font-family:'Press Start 2P',monospace;font-size:clamp(7px,1.3vw,11px);padding:10px 20px;border:3px solid;cursor:pointer;transition:all 0.12s;}
+.btn:active{transform:translate(2px,2px)!important;}
+.btn-yellow{background:var(--pixel);color:#1a1a2e;border-color:#c0a000;box-shadow:4px 4px 0 #c0a000;}
+.btn-yellow:hover{box-shadow:2px 2px 0 #c0a000;transform:translate(2px,2px);}
+.btn-green{background:var(--green);color:#fff;border-color:#27ae60;box-shadow:4px 4px 0 #27ae60;}
+.btn-green:hover{box-shadow:2px 2px 0 #27ae60;transform:translate(2px,2px);}
+.btn-red{background:var(--red);color:#fff;border-color:#c0392b;box-shadow:4px 4px 0 #c0392b;}
+.btn-red:hover{box-shadow:2px 2px 0 #c0392b;transform:translate(2px,2px);}
+.btn-blue{background:var(--blue);color:#fff;border-color:#2980b9;box-shadow:4px 4px 0 #2980b9;}
+.btn-blue:hover{box-shadow:2px 2px 0 #2980b9;transform:translate(2px,2px);}
+.btn-gray{background:#555;color:#fff;border-color:#333;box-shadow:4px 4px 0 #333;}
+.btn-gray:hover{box-shadow:2px 2px 0 #333;transform:translate(2px,2px);}
+#modeScreen{background:linear-gradient(180deg,#1a1a2e,#16213e);gap:10px;}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:480px;width:90%;}
+.mode-btn{padding:15px 11px;font-family:'Press Start 2P',monospace;font-size:clamp(6px,1.1vw,9px);cursor:pointer;border:3px solid;text-align:center;transition:all 0.12s;line-height:1.9;}
+.mode-btn:active{transform:translate(2px,2px);}
+.mode-nl-fr{background:#1a3a5c;color:#64b5f6;border-color:#2196f3;box-shadow:4px 4px 0 #2196f3;}
+.mode-nl-fr:hover{box-shadow:2px 2px 0 #2196f3;transform:translate(2px,2px);}
+.mode-fr-nl{background:#3a1a5c;color:#ce93d8;border-color:#9c27b0;box-shadow:4px 4px 0 #9c27b0;}
+.mode-fr-nl:hover{box-shadow:2px 2px 0 #9c27b0;transform:translate(2px,2px);}
+.mode-nl-en{background:#1a5c1a;color:#a5d6a7;border-color:#4caf50;box-shadow:4px 4px 0 #4caf50;}
+.mode-nl-en:hover{box-shadow:2px 2px 0 #4caf50;transform:translate(2px,2px);}
+.mode-en-nl{background:#5c3a1a;color:#ffcc80;border-color:#ff9800;box-shadow:4px 4px 0 #ff9800;}
+.mode-en-nl:hover{box-shadow:2px 2px 0 #ff9800;transform:translate(2px,2px);}
+#diffScreen{background:linear-gradient(180deg,#1a1a2e,#16213e);}
+.diff-row{display:flex;gap:13px;flex-wrap:wrap;justify-content:center;}
+#gameArea{position:absolute;inset:0;overflow:hidden;display:none;}
+#gameArea.active{display:block;}
+canvas{display:block;width:100%;height:100%;}
+#hud{position:absolute;top:0;left:0;right:0;padding:7px 13px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,#000000aa,transparent);pointer-events:none;z-index:5;flex-wrap:wrap;gap:3px;}
+.hud-item{font-family:'Press Start 2P',monospace;font-size:clamp(6px,1.1vw,9px);color:var(--pixel);text-shadow:1px 1px 0 #000;}
+.heart{font-size:15px;}
+#hudCombo{color:#ff9800;transition:transform 0.2s;}
+#hudCombo.pop{transform:scale(1.5);}
+.score-popup{position:absolute;font-family:'Press Start 2P',monospace;font-size:clamp(10px,1.8vw,15px);color:#ffde59;text-shadow:2px 2px 0 #000;pointer-events:none;z-index:30;animation:floatUp 1s ease-out forwards;}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-70px)}}
+#wordPrompt{position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:#000000cc;border:3px solid var(--pixel);padding:8px 20px;font-family:'Press Start 2P',monospace;font-size:clamp(9px,1.7vw,13px);color:var(--white);text-align:center;white-space:nowrap;z-index:5;pointer-events:none;box-shadow:0 0 18px #ffde5944;}
+.word-lang{font-size:0.6em;color:#a0c4ff;display:block;margin-bottom:3px;}
+#correctFlash{position:absolute;bottom:65px;left:50%;transform:translateX(-50%);background:#1a4a1aee;border:2px solid var(--green);padding:5px 16px;font-family:'Press Start 2P',monospace;font-size:clamp(7px,1.2vw,10px);color:var(--green);white-space:nowrap;z-index:6;pointer-events:none;opacity:0;transition:opacity 0.2s;}
+#correctFlash.show{opacity:1;}
+#timerBar{position:absolute;bottom:0;left:0;height:6px;background:var(--green);z-index:6;}
+#overlayMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;z-index:20;background:#000000bb;pointer-events:none;opacity:0;transition:opacity 0.22s;}
+#overlayMsg.show{opacity:1;pointer-events:all;}
+.msg-text{font-family:'Press Start 2P',monospace;font-size:clamp(12px,2.6vw,24px);text-align:center;padding:0 18px;}
+.msg-sub{font-family:'Press Start 2P',monospace;font-size:clamp(7px,1.3vw,11px);color:#a0c4ff;text-align:center;}
+#bossArea{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:9px;z-index:15;background:linear-gradient(180deg,#1a0000,#330000 50%,#1a0000);overflow:hidden;}
+#bossArea.active{display:flex;}
+.boss-title{font-family:'Press Start 2P',monospace;font-size:clamp(8px,1.7vw,15px);color:var(--red);animation:shake 0.5s ease-in-out infinite alternate;}
+@keyframes shake{0%{transform:translateX(-2px)}100%{transform:translateX(2px)}}
+.boss-name{font-family:'Press Start 2P',monospace;font-size:clamp(10px,2vw,18px);color:var(--pixel);}
+.boss-sprite{font-size:clamp(50px,9vw,82px);filter:drop-shadow(0 0 28px #ff000088);animation:bossBounce 1.5s ease-in-out infinite;}
+@keyframes bossBounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-9px) scale(1.05)}}
+.boss-hearts{display:flex;gap:6px;font-size:24px;}
+.boss-streak{font-family:'Press Start 2P',monospace;font-size:clamp(6px,1vw,9px);color:#a0c4ff;}
+#bossWordPrompt{background:#000000cc;border:3px solid var(--red);padding:8px 20px;font-family:'Press Start 2P',monospace;font-size:clamp(8px,1.7vw,13px);color:var(--white);text-align:center;box-shadow:0 0 18px #ff000044;}
+.boss-choices{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;max-width:660px;width:90%;}
+.boss-choice{font-family:'Press Start 2P',monospace;font-size:clamp(6px,1.1vw,9px);padding:10px 16px;cursor:pointer;border:3px solid #666;background:#222;color:var(--white);transition:all 0.12s;text-align:center;flex:1;min-width:100px;}
+.boss-choice:hover{background:#333;border-color:var(--pixel);color:var(--pixel);transform:translateY(-2px);}
+.boss-choice.correct{background:#1a4a1a;border-color:var(--green);color:var(--green);}
+.boss-choice.wrong{background:#4a1a1a;border-color:var(--red);color:var(--red);}
+#bossTimerBar{width:90%;max-width:560px;height:7px;background:#333;border:2px solid #555;overflow:hidden;}
+#bossTimerFill{height:100%;background:var(--red);}
+#hsEntryScreen{background:radial-gradient(ellipse at center,#1a1a3a,#0a0a0a);gap:13px;}
+.hs-score-display{font-family:'Press Start 2P',monospace;font-size:clamp(10px,2vw,17px);color:var(--green);}
+#hsListScreen{background:radial-gradient(ellipse at center,#0a1a2a,#0a0a0a);gap:9px;overflow-y:auto;padding:18px;}
+.hs-list-title{font-family:'Press Start 2P',monospace;font-size:clamp(10px,1.9vw,17px);color:var(--pixel);text-align:center;}
+.hs-tabs{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;}
+.hs-tab{font-family:'Press Start 2P',monospace;font-size:clamp(6px,1vw,8px);padding:6px 11px;cursor:pointer;border:2px solid #444;background:#111;color:#888;transition:all 0.12s;}
+.hs-tab.active{background:#1a1a2e;color:var(--pixel);border-color:var(--pixel);}
+.hs-table{width:100%;max-width:500px;border-collapse:collapse;}
+.hs-table th{font-family:'Press Start 2P',monospace;font-size:clamp(6px,0.9vw,8px);color:#a0c4ff;padding:5px 9px;border-bottom:2px solid #333;text-align:left;}
+.hs-table td{font-family:'Press Start 2P',monospace;font-size:clamp(6px,0.9vw,8px);padding:6px 9px;border-bottom:1px solid #222;}
+.hs-table tr.my-score td{color:var(--pixel);background:#ffffff11;}
+.hs-table tr:nth-child(1) td{color:#ffd700;}
+.hs-table tr:nth-child(2) td{color:#c0c0c0;}
+.hs-table tr:nth-child(3) td{color:#cd7f32;}
+.hs-loading{font-family:'Press Start 2P',monospace;font-size:9px;color:#888;text-align:center;padding:18px;}
+#endScreen{background:radial-gradient(ellipse at center,#1a3a1a,#0a0a0a);gap:13px;}
+#endScreen.lose{background:radial-gradient(ellipse at center,#3a1a1a,#0a0a0a);}
+.end-title{font-family:'Press Start 2P',monospace;font-size:clamp(12px,2.6vw,24px);text-align:center;}
+.end-stats{font-family:'Press Start 2P',monospace;font-size:clamp(6px,1vw,8px);color:#a0c4ff;text-align:center;line-height:2.3;}
+#adminBtn{position:fixed;bottom:9px;right:9px;font-size:8px;padding:5px 8px;z-index:100;opacity:0.3;}
+#adminBtn:hover{opacity:1;}
+#adminOverlay{position:fixed;inset:0;background:#000000ee;z-index:200;overflow-y:auto;display:none;flex-direction:column;align-items:center;padding:18px;gap:13px;}
+#adminOverlay.open{display:flex;}
+.admin-panel{background:#111;border:3px solid var(--pixel);padding:20px;max-width:660px;width:100%;box-shadow:0 0 36px #ffde5922;}
+.admin-title{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--pixel);margin-bottom:16px;}
+.admin-label{font-family:'Press Start 2P',monospace;font-size:8px;color:#a0c4ff;margin-bottom:6px;display:block;}
+textarea{width:100%;min-height:120px;background:#1a1a2e;border:2px solid #444;color:var(--white);font-family:'Nunito',sans-serif;font-size:14px;padding:8px;resize:vertical;outline:none;}
+textarea:focus{border-color:var(--pixel);}
+.admin-hint{font-size:11px;color:#888;margin-top:4px;}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.word-count{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--green);margin-top:4px;}
+.admin-tabs{display:flex;gap:6px;margin-bottom:13px;flex-wrap:wrap;}
+.admin-tab{font-family:'Press Start 2P',monospace;font-size:7px;padding:6px 10px;cursor:pointer;border:2px solid #444;background:#111;color:#888;transition:all 0.12s;}
+.admin-tab.active{background:#1a1a2e;color:var(--pixel);border-color:var(--pixel);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+#passwordScreen{background:#000000ee;position:fixed;inset:0;z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;gap:13px;}
+#passwordScreen.open{display:flex;}
+#pwInput{font-family:'Press Start 2P',monospace;font-size:12px;padding:10px 16px;background:#1a1a2e;border:3px solid var(--pixel);color:var(--white);text-align:center;letter-spacing:4px;outline:none;width:240px;}
+.pw-error{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--red);display:none;}
+.setting-row{display:flex;align-items:center;gap:11px;margin-bottom:11px;flex-wrap:wrap;}
+.setting-row label{font-family:'Press Start 2P',monospace;font-size:8px;color:#a0c4ff;min-width:60px;}
+.setting-row input[type=text]{font-family:'Nunito',sans-serif;font-size:14px;padding:6px 10px;background:#1a1a2e;border:2px solid #444;color:var(--white);outline:none;width:180px;}
+.setting-row input:focus{border-color:var(--pixel);}
+#confettiCanvas{position:fixed;inset:0;pointer-events:none;z-index:100;}
+</style>
+</head>
+<body>
+<canvas id="starsCanvas" style="position:fixed;inset:0;pointer-events:none;z-index:0"></canvas>
+<canvas id="confettiCanvas"></canvas>
+
+<!-- TITLE -->
+<div class="screen" id="titleScreen">
+  <div class="eevee-big">🦊</div>
+  <div class="title">EEVEE'S<br>WORD<br>ADVENTURE</div>
+  <div class="pixel-font" style="font-size:clamp(8px,1.6vw,12px);color:#a0c4ff">Leer nieuwe woorden!</div>
+  <button class="btn btn-yellow" onclick="showScreen('modeScreen')" style="margin-top:10px">▶ START SPEL</button>
+  <button class="btn btn-blue" onclick="showHSList()">🏆 HIGHSCORES</button>
+  <button class="btn btn-gray" onclick="openAdmin()" style="font-size:7px">⚙ BEHEER</button>
+</div>
+
+<!-- MODE -->
+<div class="screen hidden" id="modeScreen">
+  <div class="pixel-font" style="font-size:clamp(8px,1.7vw,12px);color:var(--pixel);text-align:center">Kies je taal!</div>
+  <div class="mode-grid">
+    <button class="mode-btn mode-nl-fr" onclick="selectMode('nl','fr')">🇳🇱 → 🇫🇷<br><br>Nederlands<br>naar Frans</button>
+    <button class="mode-btn mode-fr-nl" onclick="selectMode('fr','nl')">🇫🇷 → 🇳🇱<br><br>Frans<br>naar Nederlands</button>
+    <button class="mode-btn mode-nl-en" onclick="selectMode('nl','en')">🇳🇱 → 🇬🇧<br><br>Nederlands<br>naar Engels</button>
+    <button class="mode-btn mode-en-nl" onclick="selectMode('en','nl')">🇬🇧 → 🇳🇱<br><br>Engels<br>naar Nederlands</button>
+  </div>
+  <button class="btn btn-gray" onclick="showScreen('titleScreen')" style="font-size:7px">← Terug</button>
+</div>
+
+<!-- DIFFICULTY -->
+<div class="screen hidden" id="diffScreen">
+  <div class="pixel-font" style="font-size:clamp(8px,1.7vw,12px);color:var(--pixel)">Moeilijkheid</div>
+  <div class="diff-row">
+    <button class="btn btn-green" onclick="startGame('easy')">🌱 MAKKELIJK<br><span style="font-size:0.75em;display:block;margin-top:4px">Veel tijd</span></button>
+    <button class="btn btn-yellow" onclick="startGame('normal')" style="color:#1a1a2e">⚡ NORMAAL<br><span style="font-size:0.75em;display:block;margin-top:4px">Beetje haast</span></button>
+    <button class="btn btn-red" onclick="startGame('hard')">🔥 MOEILIJK<br><span style="font-size:0.75em;display:block;margin-top:4px">Supersnel!</span></button>
+  </div>
+  <button class="btn btn-gray" onclick="showScreen('modeScreen')" style="font-size:7px">← Terug</button>
+</div>
+
+<!-- GAME -->
+<div id="gameArea">
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    <div class="hud-item" id="hudScore">⭐ 0/10</div>
+    <div class="hud-item" id="hudPoints">💰 0 pts</div>
+    <div class="hud-item" id="hudCombo"></div>
+    <div class="hud-item" id="hudMode">NL→FR</div>
+    <div style="display:flex;gap:4px;align-items:center">
+      <span class="heart" id="heart1">❤️</span>
+      <span class="heart" id="heart2">🖤</span>
+    </div>
+  </div>
+  <div id="wordPrompt"><span class="word-lang" id="promptLang">Nederlands</span><span id="promptWord">hond</span></div>
+  <div id="correctFlash">✅ chien</div>
+  <div id="timerBar"></div>
+  <div id="overlayMsg">
+    <div class="msg-text" id="overlayText">✅ GOED!</div>
+    <div class="msg-sub" id="overlaySub"></div>
+  </div>
+</div>
+
+<!-- BOSS -->
+<div id="bossArea">
+  <div class="boss-title">⚠ EINDBAAS GEVECHT! ⚠</div>
+  <div class="boss-name" id="bossName">MEWTWO verschijnt!</div>
+  <div class="boss-sprite" id="bossSprite">👾</div>
+  <div class="boss-hearts" id="bossHearts">❤️❤️❤️❤️❤️</div>
+  <div class="boss-streak" id="bossStreakInfo">Reeks: 0/5</div>
+  <div id="bossWordPrompt"><span class="word-lang" id="bossPromptLang">Nederlands</span><span id="bossPromptWord">hond</span></div>
+  <div id="bossTimerBar"><div id="bossTimerFill" style="width:100%"></div></div>
+  <div class="boss-choices" id="bossChoices"></div>
+  <div class="hud-item" style="color:#ff9800;margin-top:4px" id="bossComboInfo"></div>
+</div>
+
+<!-- HIGHSCORE ENTRY -->
+<div class="screen hidden" id="hsEntryScreen">
+  <div class="pixel-font" style="font-size:clamp(11px,2.3vw,20px);color:var(--pixel);text-align:center" id="hsEntryTitle">🎉 GEWONNEN!</div>
+  <div style="font-size:52px" id="hsEntryEmoji">🏆</div>
+  <div class="hs-score-display" id="hsEntryScore">1250 punten</div>
+  <div class="pixel-font" style="font-size:clamp(7px,1.3vw,10px);color:#a0c4ff;text-align:center" id="hsEntryRank">Laden...</div>
+  <input type="text" id="hsNameInput" placeholder="Jouw naam..." maxlength="16"
+    style="font-family:'Press Start 2P',monospace;font-size:12px;padding:11px 18px;background:#1a1a2e;border:3px solid var(--pixel);color:var(--white);text-align:center;outline:none;width:260px;">
+  <button class="btn btn-yellow" onclick="submitHighscore()" style="color:#1a1a2e">💾 OPSLAAN</button>
+  <button class="btn btn-gray" onclick="skipHighscore()" style="font-size:7px">Overslaan</button>
+</div>
+
+<!-- HIGHSCORE LIST -->
+<div class="screen hidden" id="hsListScreen">
+  <div class="hs-list-title">🏆 HIGHSCORES</div>
+  <div class="hs-tabs">
+    <div class="hs-tab active" onclick="switchHSTab('easy',this)">🌱 Makkelijk</div>
+    <div class="hs-tab" onclick="switchHSTab('normal',this)">⚡ Normaal</div>
+    <div class="hs-tab" onclick="switchHSTab('hard',this)">🔥 Moeilijk</div>
+  </div>
+  <div class="hs-loading" id="hsContent">Laden...</div>
+  <button class="btn btn-gray" onclick="showScreen('titleScreen')" style="font-size:7px">← Terug</button>
+</div>
+
+<!-- END -->
+<div class="screen hidden" id="endScreen">
+  <div class="end-title" id="endTitle">🎉 GEWONNEN!</div>
+  <div style="font-size:52px" id="endEmoji">🏆</div>
+  <div class="end-stats" id="endStats"></div>
+  <div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:center">
+    <button class="btn btn-green" onclick="showScreen('modeScreen')">🔄 Opnieuw</button>
+    <button class="btn btn-blue" onclick="showHSList()">🏆 Scores</button>
+    <button class="btn btn-yellow" onclick="showScreen('titleScreen')" style="color:#1a1a2e">🏠 Menu</button>
+  </div>
+</div>
+
+<!-- ADMIN BTN -->
+<button class="btn btn-gray pixel-font" id="adminBtn" onclick="openAdmin()">⚙</button>
+
+<!-- PASSWORD -->
+<div id="passwordScreen">
+  <div class="pixel-font" style="font-size:10px;color:var(--pixel)">🔐 BEHEER PANEEL</div>
+  <div class="pixel-font" style="font-size:8px;color:#a0c4ff">Wachtwoord invoeren</div>
+  <input type="password" id="pwInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPw()">
+  <div class="pw-error" id="pwError">❌ Fout wachtwoord!</div>
+  <div style="display:flex;gap:9px">
+    <button class="btn btn-yellow" onclick="checkPw()" style="color:#1a1a2e">Inloggen</button>
+    <button class="btn btn-gray" onclick="closePasswordScreen()">Annuleren</button>
+  </div>
+  <div class="pixel-font" style="font-size:7px;color:#555;margin-top:5px">Standaard: eevee123</div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminOverlay">
+  <div class="admin-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="admin-title">⚙ BEHEER PANEEL</div>
+      <button class="btn btn-gray" onclick="closeAdmin()" style="font-size:7px">✕ Sluiten</button>
+    </div>
+    <div class="admin-tabs">
+      <div class="admin-tab active" onclick="switchAdminTab('nl-fr',this)">NL ↔ FR</div>
+      <div class="admin-tab" onclick="switchAdminTab('nl-en',this)">NL ↔ EN</div>
+      <div class="admin-tab" onclick="switchAdminTab('settings',this)">⚙ Instellingen</div>
+    </div>
+    <div class="tab-content active" id="tab-nl-fr">
+      <span class="admin-label">🇳🇱 Nederlands ↔ 🇫🇷 Frans</span>
+      <span class="admin-hint" style="display:block;margin-bottom:6px">Formaat: nederlandswoord,franswoord (één per regel)</span>
+      <textarea id="nlFrWords"></textarea>
+      <div class="word-count" id="nlFrCount"></div>
+      <div class="admin-actions">
+        <button class="btn btn-green" onclick="saveWords('nl-fr')" style="font-size:7px">💾 Opslaan</button>
+        <button class="btn btn-gray" onclick="loadDefault('nl-fr')" style="font-size:7px">📥 Standaard</button>
+        <button class="btn btn-red" onclick="clearWords('nl-fr')" style="font-size:7px">🗑 Wissen</button>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-nl-en">
+      <span class="admin-label">🇳🇱 Nederlands ↔ 🇬🇧 Engels</span>
+      <span class="admin-hint" style="display:block;margin-bottom:6px">Formaat: nederlandswoord,engelswoord (één per regel)</span>
+      <textarea id="nlEnWords"></textarea>
+      <div class="word-count" id="nlEnCount"></div>
+      <div class="admin-actions">
+        <button class="btn btn-green" onclick="saveWords('nl-en')" style="font-size:7px">💾 Opslaan</button>
+        <button class="btn btn-gray" onclick="loadDefault('nl-en')" style="font-size:7px">📥 Standaard</button>
+        <button class="btn btn-red" onclick="clearWords('nl-en')" style="font-size:7px">🗑 Wissen</button>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-settings">
+      <span class="admin-label">👤 Spelersnaam</span>
+      <div class="setting-row">
+        <label>Naam:</label>
+        <input type="text" id="playerNameInput" placeholder="Naam..." maxlength="16">
+        <button class="btn btn-green" onclick="savePlayerName()" style="font-size:7px">💾</button>
+      </div>
+      <div id="playerNameMsg" style="font-family:'Press Start 2P',monospace;font-size:8px;color:var(--green);display:none;margin-bottom:12px"></div>
+      <span class="admin-label">🔐 Wachtwoord wijzigen</span>
+      <div class="setting-row">
+        <input type="password" id="newPw1" placeholder="Nieuw wachtwoord" style="background:#1a1a2e;border:2px solid #444;color:#fff;padding:7px 10px;font-family:Nunito,sans-serif;font-size:13px;outline:none;width:170px">
+        <input type="password" id="newPw2" placeholder="Bevestig" style="background:#1a1a2e;border:2px solid #444;color:#fff;padding:7px 10px;font-family:Nunito,sans-serif;font-size:13px;outline:none;width:140px">
+        <button class="btn btn-yellow" onclick="changePw()" style="color:#1a1a2e;font-size:7px">Opslaan</button>
+      </div>
+      <div id="pwChangeMsg" style="font-family:'Press Start 2P',monospace;font-size:8px;color:var(--green);display:none"></div>
+    </div>
+    <div class="admin-hint" style="margin-top:9px">💡 Woorden: lokaal opgeslagen. Highscores: gedeeld online.</div>
+  </div>
+</div>
+
+<script>
+// ===== DEFAULTS =====
+const DEFAULT_NL_FR=`hond,chien\nkat,chat\nappel,pomme\nboom,arbre\nhuis,maison\nwater,eau\nzon,soleil\nmaan,lune\nvis,poisson\nvogel,oiseau\nboek,livre\nschool,école\nfiets,vélo\nrood,rouge\nblauw,bleu\ngroen,vert\ngroot,grand\nklein,petit\nmooi,beau\nsnel,rapide\ngoed,bon\ndag,bonjour\nnacht,nuit\neten,manger\ndrinken,boire`;
+const DEFAULT_NL_EN=`hond,dog\nkat,cat\nappel,apple\nboom,tree\nhuis,house\nwater,water\nzon,sun\nmaan,moon\nvis,fish\nvogel,bird\nboek,book\nschool,school\nfiets,bicycle\nrood,red\nblauw,blue\ngroen,green\ngroot,big\nklein,small\nmooi,beautiful\nsnel,fast\ngoed,good\ndag,hello\nnacht,night\neten,eat\ndrinken,drink`;
+const POKEMON=[{name:'Bulbasaur',e:'🌿'},{name:'Venusaur',e:'🌿'},{name:'Charmander',e:'🔥'},{name:'Charmeleon',e:'🔥'},{name:'Charizard',e:'🔥'},{name:'Squirtle',e:'💧'},{name:'Blastoise',e:'💧'},{name:'Pidgeot',e:'🐦'},{name:'Pikachu',e:'⚡'},{name:'Raichu',e:'⚡'},{name:'Meowth',e:'😸'},{name:'Persian',e:'😸'},{name:'Psyduck',e:'🦆'},{name:'Growlithe',e:'🐕'},{name:'Arcanine',e:'🐕'},{name:'Alakazam',e:'🔮'},{name:'Machamp',e:'💪'},{name:'Golem',e:'🪨'},{name:'Rapidash',e:'🐎'},{name:'Gengar',e:'👻'},{name:'Hypno',e:'😴'},{name:'Electrode',e:'💣'},{name:'Cubone',e:'💀'},{name:'Marowak',e:'💀'},{name:'Hitmonlee',e:'🥊'},{name:'Chansey',e:'🥚'},{name:'Kangaskhan',e:'🦘'},{name:'Starmie',e:'⭐'},{name:'Scyther',e:'🗡️'},{name:'Electabuzz',e:'⚡'},{name:'Magmar',e:'🔥'},{name:'Gyarados',e:'🐉'},{name:'Lapras',e:'🌊'},{name:'Ditto',e:'🟣'},{name:'Eevee',e:'🦊'},{name:'Vaporeon',e:'💧'},{name:'Jolteon',e:'⚡'},{name:'Flareon',e:'🔥'},{name:'Snorlax',e:'😴'},{name:'Articuno',e:'❄️'},{name:'Zapdos',e:'⚡'},{name:'Moltres',e:'🔥'},{name:'Dragonite',e:'🐲'},{name:'Mewtwo',e:'👾'},{name:'Mew',e:'💫'}];
+const LANG_NAMES={nl:'Nederlands',fr:'Frans',en:'Engels'};
+const DIFF_TIMES={easy:7000,normal:4500,hard:2500};
+const POINTS_BASE=100;
+const COMBO_THRESHOLD=3;
+const COMBO_BONUS=50;
+const CHOICE_DELAY=600; // ms before signs become clickable
+
+// ===== STATE =====
+let gameMode={from:'nl',to:'fr'};
+let difficulty='normal';
+let score=0,lives=2,totalPoints=0,comboCount=0;
+let wordList=[],usedWords=[],currentWord=null;
+let gameActive=false,timerHandle=null,timerStart=0,timerDuration=0;
+let bossHearts=5,bossStreak=0,bossPokemon=null,bossWaiting=false,bossTimerHandle2=null,bossCurrentWord=null;
+let scrollY=0,forkActive=false,waitingForChoice=false,choiceDelay=false;
+let forkY=9999,playerX=0,playerTargetX=0;
+let signWords=[],clickAreas=[];
+let flashResult=null,flashTimer=0;
+let animFrameId=null,lastTime=0;
+const SCROLL_SPEED=200;
+
+// ===== AUDIO =====
+let audioCtx=null;
+function getAC(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function tone(f,type,dur,vol=0.28){try{const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.type=type;o.frequency.value=f;g.gain.setValueAtTime(vol,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);o.start();o.stop(ac.currentTime+dur);}catch(e){}}
+function sfxCorrect(){tone(523,'sine',0.1);setTimeout(()=>tone(659,'sine',0.1),80);setTimeout(()=>tone(784,'sine',0.15),160);}
+function sfxWrong(){tone(200,'sawtooth',0.15,0.2);setTimeout(()=>tone(150,'sawtooth',0.2,0.2),100);}
+function sfxCombo(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.1,0.35),i*60));}
+function sfxBossHit(){tone(100,'sawtooth',0.3,0.25);}
+function sfxVictory(){[523,659,784,1047,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.15,0.4),i*90));}
+function sfxGameOver(){[400,350,300,200].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',0.25,0.25),i*120));}
+
+// ===== CONFETTI =====
+const confCanvas=document.getElementById('confettiCanvas');
+const confCtx=confCanvas.getContext('2d');
+let confetti=[],confRunning=false;
+function startConfetti(){
+  confCanvas.width=window.innerWidth;confCanvas.height=window.innerHeight;
+  confetti=Array.from({length:160},()=>({x:Math.random()*confCanvas.width,y:Math.random()*-confCanvas.height,w:8+Math.random()*7,h:5+Math.random()*5,color:['#ffde59','#2ecc71','#3498db','#e74c3c','#9b59b6','#ff9800'][Math.floor(Math.random()*6)],rot:Math.random()*360,rotS:(Math.random()-0.5)*6,vx:(Math.random()-0.5)*3,vy:3+Math.random()*4}));
+  confRunning=true;animConf();
+}
+function animConf(){if(!confRunning)return;confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);confetti.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.rotS;if(p.y>confCanvas.height){p.y=-20;p.x=Math.random()*confCanvas.width;}confCtx.save();confCtx.translate(p.x,p.y);confCtx.rotate(p.rot*Math.PI/180);confCtx.fillStyle=p.color;confCtx.fillRect(-p.w/2,-p.h/2,p.w,p.h);confCtx.restore();});requestAnimationFrame(animConf);}
+function stopConfetti(){confRunning=false;confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);}
+
+// ===== STARS =====
+const starsCvs=document.getElementById('starsCanvas'),sCtx=starsCvs.getContext('2d');
+let stars=[];
+function initStars(){starsCvs.width=window.innerWidth;starsCvs.height=window.innerHeight;stars=Array.from({length:100},()=>({x:Math.random()*starsCvs.width,y:Math.random()*starsCvs.height,r:Math.random()*1.4+0.3,a:Math.random(),s:Math.random()*0.004+0.002}));}
+function animStars(){sCtx.clearRect(0,0,starsCvs.width,starsCvs.height);stars.forEach(s=>{s.a+=s.s;if(s.a>1)s.a=0;sCtx.beginPath();sCtx.arc(s.x,s.y,s.r,0,Math.PI*2);sCtx.fillStyle=`rgba(255,255,255,${s.a})`;sCtx.fill();});requestAnimationFrame(animStars);}
+initStars();animStars();
+window.addEventListener('resize',()=>{initStars();if(gameActive)resizeCanvas();});
+
+// ===== SCREENS =====
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));const el=document.getElementById(id);if(el)el.classList.remove('hidden');document.getElementById('gameArea').classList.remove('active');document.getElementById('bossArea').classList.remove('active');stopConfetti();}
+function selectMode(f,t){gameMode={from:f,to:t};showScreen('diffScreen');}
+
+// ===== STORAGE =====
+function getWords(pair){return localStorage.getItem('words_'+pair)||(pair==='nl-fr'?DEFAULT_NL_FR:DEFAULT_NL_EN);}
+function parseWords(pair){return getWords(pair).split('\n').map(l=>l.trim()).filter(l=>l&&l.includes(',')).map(l=>{const p=l.split(',');return{nl:p[0].trim(),other:p[1].trim()};});}
+function getPassword(){return localStorage.getItem('admin_pw')||'eevee123';}
+function getPlayerName(){return localStorage.getItem('player_name')||'';}
+
+// ===== CANVAS =====
+const gameCanvas=document.getElementById('gameCanvas'),ctx=gameCanvas.getContext('2d');
+function resizeCanvas(){gameCanvas.width=window.innerWidth;gameCanvas.height=window.innerHeight;playerX=gameCanvas.width/2;playerTargetX=playerX;}
+
+// ===== GAME START =====
+function startGame(diff){
+  difficulty=diff;
+  const pair=(gameMode.from==='fr'||gameMode.to==='fr')?'nl-fr':'nl-en';
+  wordList=parseWords(pair);
+  if(wordList.length<3){alert('Te weinig woorden! Voeg minstens 3 toe.');return;}
+  score=0;lives=2;totalPoints=0;comboCount=0;usedWords=[];
+  forkActive=false;waitingForChoice=false;choiceDelay=false;
+  scrollY=0;forkY=9999;resizeCanvas();
+  playerX=gameCanvas.width/2;playerTargetX=playerX;
+  document.getElementById('hudScore').textContent='⭐ 0/10';
+  document.getElementById('hudPoints').textContent='💰 0 pts';
+  document.getElementById('hudCombo').textContent='';
+  document.getElementById('hudMode').textContent=`${gameMode.from.toUpperCase()}→${gameMode.to.toUpperCase()}`;
+  updateLivesHUD();nextWord();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById('gameArea').classList.add('active');
+  document.getElementById('bossArea').classList.remove('active');
+  document.getElementById('overlayMsg').classList.remove('show');
+  stopConfetti();
+  gameActive=true;lastTime=performance.now();
+  if(animFrameId)cancelAnimationFrame(animFrameId);
+  animFrameId=requestAnimationFrame(gameLoop);
+  setTimeout(spawnFork,700);
+}
+
+// ===== GAME LOOP =====
+function gameLoop(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;
+  scrollY+=SCROLL_SPEED*dt;
+  playerX+=(playerTargetX-playerX)*0.13;
+  if(flashTimer>0){flashTimer-=dt;if(flashTimer<0)flashTimer=0;}
+  if(forkActive)forkY-=SCROLL_SPEED*dt;
+  draw();
+  if(gameActive)animFrameId=requestAnimationFrame(gameLoop);
+}
+
+// ===== WORDS =====
+function nextWord(){
+  if(usedWords.length>=wordList.length)usedWords=[];
+  const pool=wordList.filter(w=>!usedWords.includes(w));
+  currentWord=pool[Math.floor(Math.random()*pool.length)];
+  usedWords.push(currentWord);
+  const fw=gameMode.from==='nl'?currentWord.nl:currentWord.other;
+  document.getElementById('promptLang').textContent=LANG_NAMES[gameMode.from];
+  document.getElementById('promptWord').textContent=fw;
+}
+function getAnswerWord(w){return gameMode.to==='nl'?w.nl:w.other;}
+function getDistractors(correct,n){const all=wordList.filter(w=>w!==correct);shuffle(all);return all.slice(0,n).map(w=>getAnswerWord(w));}
+
+function spawnFork(){
+  if(!currentWord)nextWord();
+  const dirs=[-1,0,1];shuffle(dirs);
+  const dist=getDistractors(currentWord,2);
+  signWords=[{dir:dirs[0],word:getAnswerWord(currentWord),correct:true},{dir:dirs[1],word:dist[0],correct:false},{dir:dirs[2],word:dist[1],correct:false}];
+  forkY=gameCanvas.height*0.42;forkActive=true;
+  choiceDelay=true;clickAreas=[];waitingForChoice=false;
+  setTimeout(()=>{choiceDelay=false;waitingForChoice=true;startTimer();},CHOICE_DELAY);
+}
+
+// ===== DRAW =====
+function draw(){
+  const W=gameCanvas.width,H=gameCanvas.height;
+  ctx.clearRect(0,0,W,H);
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#0a0a1a');sky.addColorStop(1,'#1a2a3a');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+  drawRoad(W,H);drawPlayer(W,H);
+  if(forkActive)drawSigns(W,H);
+  if(flashTimer>0){ctx.fillStyle=flashResult==='correct'?`rgba(46,204,113,${flashTimer/0.4*0.28})`:`rgba(231,76,60,${flashTimer/0.4*0.33})`;ctx.fillRect(0,0,W,H);}
+}
+
+function drawRoad(W,H){
+  const roadW=W*0.36,cx=W/2,scroll=scrollY%80;
+  if(!forkActive){
+    ctx.fillStyle='#2d5a27';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#3a7a32';
+    for(let i=-1;i<H/40+1;i++){const y=(i*40+scroll*0.4)%H;ctx.fillRect(cx-roadW/2-22,y,22,7);ctx.fillRect(cx+roadW/2,y,22,7);}
+    const g=ctx.createLinearGradient(cx-roadW/2,0,cx+roadW/2,0);
+    g.addColorStop(0,'#5a4a35');g.addColorStop(0.5,'#7a6248');g.addColorStop(1,'#5a4a35');
+    ctx.fillStyle=g;ctx.fillRect(cx-roadW/2,0,roadW,H);
+    ctx.strokeStyle='#f5e64288';ctx.lineWidth=4;ctx.setLineDash([36,26]);ctx.lineDashOffset=-scroll;
+    ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();ctx.setLineDash([]);
+  } else {
+    const fY=forkY,armW=roadW*0.62;
+    ctx.fillStyle='#2d5a27';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#3a7a32';
+    for(let i=-1;i<H/40+1;i++){const y=(i*40+scroll*0.4)%H;ctx.fillRect(0,y,W,5);}
+    const lx=cx-roadW*1.0,rx=cx+roadW*1.0;
+    const mg=ctx.createLinearGradient(cx-roadW/2,0,cx+roadW/2,0);
+    mg.addColorStop(0,'#5a4a35');mg.addColorStop(0.5,'#7a6248');mg.addColorStop(1,'#5a4a35');
+    ctx.fillStyle=mg;ctx.fillRect(cx-roadW/2,fY,roadW,H-fY);
+    ctx.fillStyle='#7a6248';
+    ctx.beginPath();ctx.moveTo(cx-roadW/2,fY);ctx.lineTo(lx-armW/2,0);ctx.lineTo(lx+armW/2,0);ctx.lineTo(cx,fY);ctx.closePath();ctx.fill();
+    ctx.fillRect(cx-armW/2,0,armW,fY);
+    ctx.beginPath();ctx.moveTo(cx+roadW/2,fY);ctx.lineTo(rx-armW/2,0);ctx.lineTo(rx+armW/2,0);ctx.lineTo(cx,fY);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#f5e64266';ctx.lineWidth=2;ctx.setLineDash([16,16]);
+    ctx.beginPath();ctx.moveTo(cx,fY);ctx.lineTo(cx,0);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+
+function drawPlayer(W,H){
+  const py=H*0.64,px=forkActive?playerX:W/2;
+  ctx.fillStyle='rgba(0,0,0,0.22)';
+  ctx.beginPath();ctx.ellipse(px,py+23,15,5,0,0,Math.PI*2);ctx.fill();
+  ctx.font=`${Math.min(W*0.053,38)}px serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🦊',px,py);
+}
+
+function drawSigns(W,H){
+  const cx=W/2,roadW=W*0.36;
+  const lx=cx-roadW*1.0,rx=cx+roadW*1.0;
+  const spos=[{x:lx,y:H*0.13},{x:cx,y:H*0.13},{x:rx,y:H*0.13}];
+  clickAreas=[];
+  signWords.forEach(sw=>{
+    const idx=sw.dir+1,pos=spos[idx];
+    const sw_w=Math.min(W*0.19,145),sw_h=44;
+    const sx=pos.x-sw_w/2,sy=pos.y-sw_h/2;
+    const clickable=!choiceDelay&&waitingForChoice;
+    ctx.fillStyle='#8b6914';ctx.fillRect(pos.x-3,sy+sw_h,6,H*0.08);
+    const brd=ctx.createLinearGradient(sx,sy,sx,sy+sw_h);
+    brd.addColorStop(0,clickable?'#e8c87a':'#c8a96e');brd.addColorStop(1,clickable?'#c8a030':'#a07830');
+    ctx.fillStyle=brd;ctx.fillRect(sx,sy,sw_w,sw_h);
+    ctx.strokeStyle=clickable?'#ffde59':'#8b6914';ctx.lineWidth=clickable?3:2;
+    if(clickable){ctx.shadowColor='#ffde5955';ctx.shadowBlur=8;}
+    ctx.strokeRect(sx,sy,sw_w,sw_h);ctx.shadowBlur=0;
+    const arrow=sw.dir===-1?'← ':sw.dir===1?' →':'↑ ';
+    ctx.fillStyle='#3a2000';
+    ctx.font=`bold ${Math.min(W*0.015,10)}px 'Nunito',sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(arrow+sw.word,pos.x,pos.y);
+    clickAreas.push({x1:sx,y1:sy,x2:sx+sw_w,y2:sy+sw_h,sw});
+  });
+}
+
+// ===== INTERACTION =====
+gameCanvas.addEventListener('click',e=>{
+  if(choiceDelay||!waitingForChoice||!forkActive)return;
+  const r=gameCanvas.getBoundingClientRect();
+  const sx=gameCanvas.width/r.width,sy=gameCanvas.height/r.height;
+  const mx=(e.clientX-r.left)*sx,my=(e.clientY-r.top)*sy;
+  for(const a of clickAreas){if(mx>=a.x1&&mx<=a.x2&&my>=a.y1&&my<=a.y2){handleChoice(a.sw);return;}}
+});
+
+function handleChoice(sw){
+  if(!waitingForChoice)return;
+  waitingForChoice=false;stopTimer();
+  const elapsed=performance.now()-timerStart;
+  if(sw.correct){
+    const pct=Math.max(0,1-elapsed/timerDuration);
+    const pts=Math.round(POINTS_BASE*pct)+20;
+    comboCount++;
+    let bonus=0;
+    if(comboCount>=COMBO_THRESHOLD){bonus=COMBO_BONUS;sfxCombo();}else sfxCorrect();
+    totalPoints+=pts+bonus;score++;
+    flashResult='correct';flashTimer=0.38;
+    document.getElementById('hudScore').textContent=`⭐ ${score}/10`;
+    document.getElementById('hudPoints').textContent=`💰 ${totalPoints} pts`;
+    updateComboHUD();showScorePopup(pts+bonus,bonus>0);
+    playerTargetX=gameCanvas.width/2+sw.dir*gameCanvas.width*0.33;
+    showCorrectFlash(getAnswerWord(currentWord));
+    const sub=bonus>0?`🔥 COMBO x${comboCount}! +${bonus}`:`+${pts} punten`;
+    showOverlay('✅ GOED!',sub,'#2ecc71',720,afterCorrect);
+  } else {
+    sfxWrong();lives--;comboCount=0;updateLivesHUD();updateComboHUD();
+    flashResult='wrong';flashTimer=0.46;
+    playerTargetX=gameCanvas.width/2+sw.dir*gameCanvas.width*0.33;
+    showCorrectFlash(getAnswerWord(currentWord));
+    if(lives<=0){showOverlay('❌ FOUT!',`Het was: ${getAnswerWord(currentWord)}`,'#e74c3c',1200,()=>endGame(false));}
+    else{showOverlay('❌ FOUT!',`Het was: ${getAnswerWord(currentWord)} — Nog 1 kans!`,'#e74c3c',1050,afterCorrect);}
+  }
+}
+
+function afterCorrect(){
+  if(score>=10){startBoss();return;}
+  forkActive=false;waitingForChoice=false;choiceDelay=false;
+  playerTargetX=gameCanvas.width/2;forkY=9999;
+  nextWord();setTimeout(spawnFork,880);
+}
+
+function showCorrectFlash(word){
+  const el=document.getElementById('correctFlash');
+  el.textContent=`✅ ${word}`;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),1350);
+}
+function showScorePopup(pts,isCombo){
+  const el=document.createElement('div');el.className='score-popup';
+  el.textContent=(isCombo?'🔥 ':'+')+pts;
+  el.style.left=(28+Math.random()*44)+'%';el.style.top='38%';
+  el.style.color=isCombo?'#ff9800':'#ffde59';
+  document.getElementById('gameArea').appendChild(el);
+  setTimeout(()=>el.remove(),980);
+}
+function updateLivesHUD(){document.getElementById('heart1').textContent=lives>=1?'❤️':'🖤';document.getElementById('heart2').textContent='🖤';}
+function updateComboHUD(){
+  const el=document.getElementById('hudCombo');
+  if(comboCount>=COMBO_THRESHOLD){el.textContent=`🔥 x${comboCount}`;el.classList.add('pop');setTimeout(()=>el.classList.remove('pop'),200);}
+  else el.textContent=comboCount>1?`⚡ x${comboCount}`:'';
+}
+
+// ===== TIMER =====
+const timerBar=document.getElementById('timerBar');
+function startTimer(){
+  timerDuration=DIFF_TIMES[difficulty];timerStart=performance.now();
+  function tick(){
+    if(!waitingForChoice)return;
+    const pct=Math.max(0,1-(performance.now()-timerStart)/timerDuration);
+    timerBar.style.width=(pct*100)+'%';
+    timerBar.style.background=pct>0.5?'#2ecc71':pct>0.25?'#f39c12':'#e74c3c';
+    if(pct<=0){handleTimeout();}else{timerHandle=requestAnimationFrame(tick);}
+  }
+  timerHandle=requestAnimationFrame(tick);
+}
+function stopTimer(){if(timerHandle){cancelAnimationFrame(timerHandle);timerHandle=null;}timerBar.style.width='0%';}
+function handleTimeout(){
+  if(!waitingForChoice)return;
+  waitingForChoice=false;sfxWrong();
+  lives--;comboCount=0;updateLivesHUD();updateComboHUD();
+  flashResult='wrong';flashTimer=0.46;
+  showCorrectFlash(getAnswerWord(currentWord));
+  if(lives<=0){showOverlay('⏰ TE LAAT!',`Het was: ${getAnswerWord(currentWord)}`,'#e74c3c',1200,()=>endGame(false));}
+  else{showOverlay('⏰ TE LAAT!',`Het was: ${getAnswerWord(currentWord)} — Nog 1 kans!`,'#e74c3c',1050,afterCorrect);}
+}
+
+// ===== OVERLAY =====
+let overlayCallback=null;
+function showOverlay(text,sub,color,dur,cb){
+  document.getElementById('overlayText').textContent=text;
+  document.getElementById('overlayText').style.color=color||'#fff';
+  document.getElementById('overlaySub').textContent=sub||'';
+  document.getElementById('overlayMsg').classList.add('show');
+  overlayCallback=cb;
+  setTimeout(()=>{document.getElementById('overlayMsg').classList.remove('show');if(overlayCallback){const f=overlayCallback;overlayCallback=null;f();}},dur);
+}
+
+// ===== BOSS =====
+function startBoss(){
+  gameActive=false;if(animFrameId){cancelAnimationFrame(animFrameId);animFrameId=null;}
+  stopTimer();
+  document.getElementById('gameArea').classList.remove('active');
+  bossHearts=5;bossStreak=0;comboCount=0;
+  bossPokemon=POKEMON[Math.floor(Math.random()*POKEMON.length)];
+  document.getElementById('bossName').textContent=bossPokemon.name+' verschijnt!';
+  document.getElementById('bossSprite').textContent=bossPokemon.e;
+  updateBossHearts();updateBossStreak();
+  document.getElementById('bossArea').classList.add('active');
+  document.getElementById('bossComboInfo').textContent='';
+  nextBossQuestion();
+}
+function updateBossHearts(){let h='';for(let i=0;i<5;i++)h+=i<bossHearts?'❤️':'🖤';document.getElementById('bossHearts').textContent=h;}
+function updateBossStreak(){document.getElementById('bossStreakInfo').textContent=`Reeks: ${bossStreak}/5`;}
+
+function nextBossQuestion(){
+  if(usedWords.length>=wordList.length)usedWords=[];
+  const pool=wordList.filter(w=>!usedWords.includes(w));
+  bossCurrentWord=pool[Math.floor(Math.random()*pool.length)]||wordList[0];
+  usedWords.push(bossCurrentWord);
+  const fw=gameMode.from==='nl'?bossCurrentWord.nl:bossCurrentWord.other;
+  document.getElementById('bossPromptLang').textContent=LANG_NAMES[gameMode.from];
+  document.getElementById('bossPromptWord').textContent=fw;
+  const dist=getDistractors(bossCurrentWord,2),correct=getAnswerWord(bossCurrentWord);
+  const choices=[correct,...dist];shuffle(choices);
+  const cont=document.getElementById('bossChoices');cont.innerHTML='';
+  choices.forEach(c=>{
+    const btn=document.createElement('button');btn.className='boss-choice';btn.textContent=c;
+    btn.onclick=()=>handleBossChoice(c===correct,btn,correct);
+    cont.appendChild(btn);
+  });
+  bossWaiting=true;timerStart=performance.now();startBossTimer();
+}
+function startBossTimer(){
+  const dur=DIFF_TIMES[difficulty],fill=document.getElementById('bossTimerFill');
+  fill.style.width='100%';const start=performance.now();
+  function tick(){const pct=Math.max(0,1-(performance.now()-start)/dur);fill.style.width=(pct*100)+'%';if(pct<=0){handleBossTimeout();return;}if(bossWaiting)bossTimerHandle2=requestAnimationFrame(tick);}
+  bossTimerHandle2=requestAnimationFrame(tick);
+}
+function stopBossTimer(){if(bossTimerHandle2){cancelAnimationFrame(bossTimerHandle2);bossTimerHandle2=null;}document.getElementById('bossTimerFill').style.width='0%';}
+
+function handleBossChoice(correct,btn,correctWord){
+  if(!bossWaiting)return;
+  bossWaiting=false;stopBossTimer();
+  document.querySelectorAll('.boss-choice').forEach(b=>{b.onclick=null;if(b.textContent===correctWord)b.classList.add('correct');});
+  if(correct){
+    btn.classList.add('correct');
+    const elapsed=performance.now()-timerStart;
+    const pct=Math.max(0,1-elapsed/DIFF_TIMES[difficulty]);
+    const pts=Math.round(POINTS_BASE*0.7*pct)+15;
+    comboCount++;bossStreak++;
+    let bonus=0;
+    if(comboCount>=COMBO_THRESHOLD){bonus=COMBO_BONUS;sfxCombo();document.getElementById('bossComboInfo').textContent=`🔥 COMBO x${comboCount}! +${bonus}`;}
+    else{sfxCorrect();document.getElementById('bossComboInfo').textContent='';}
+    totalPoints+=pts+bonus;
+    updateBossStreak();
+    if(bossStreak>=5){sfxVictory();setTimeout(()=>endGame(true),800);return;}
+    setTimeout(nextBossQuestion,880);
+  } else {
+    btn.classList.add('wrong');sfxBossHit();sfxWrong();
+    bossHearts--;bossStreak=0;comboCount=0;
+    document.getElementById('bossComboInfo').textContent='';
+    updateBossHearts();updateBossStreak();
+    if(bossHearts<=0){sfxGameOver();setTimeout(()=>endGame(false),800);return;}
+    setTimeout(nextBossQuestion,880);
+  }
+}
+function handleBossTimeout(){
+  if(!bossWaiting)return;bossWaiting=false;sfxBossHit();
+  bossHearts--;bossStreak=0;comboCount=0;
+  document.getElementById('bossComboInfo').textContent='';
+  const cw=getAnswerWord(bossCurrentWord);
+  document.querySelectorAll('.boss-choice').forEach(b=>{if(b.textContent===cw)b.classList.add('correct');});
+  updateBossHearts();updateBossStreak();
+  if(bossHearts<=0){sfxGameOver();setTimeout(()=>endGame(false),800);return;}
+  setTimeout(nextBossQuestion,880);
+}
+
+// ===== END GAME =====
+function endGame(won){
+  gameActive=false;bossWaiting=false;
+  stopTimer();stopBossTimer();
+  if(animFrameId){cancelAnimationFrame(animFrameId);animFrameId=null;}
+  document.getElementById('gameArea').classList.remove('active');
+  document.getElementById('bossArea').classList.remove('active');
+  if(won){sfxVictory();startConfetti();showHSEntry();}
+  else{
+    sfxGameOver();
+    const e=document.getElementById('endScreen');e.className='screen lose';
+    document.getElementById('endTitle').textContent='😢 VERLOREN...';
+    document.getElementById('endTitle').style.color='#e74c3c';
+    document.getElementById('endEmoji').textContent='💔';
+    document.getElementById('endStats').textContent=`Punten: ${totalPoints}\nGoede antwoorden: ${score}/10\nMoeilijkheid: ${difficulty.toUpperCase()}`;
+    showScreen('endScreen');e.classList.remove('hidden');
+  }
+}
+
+// ===== HIGHSCORE ENTRY =====
+function showHSEntry(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById('hsNameInput').value=getPlayerName();
+  document.getElementById('hsEntryScore').textContent=`${totalPoints} punten`;
+  document.getElementById('hsEntryRank').textContent='Laden...';
+  loadScores(difficulty).then(scores=>{
+    const rank=scores.filter(s=>s.score>totalPoints).length+1;
+    document.getElementById('hsEntryRank').textContent=rank<=10?`Je staat #${rank} van de top 10!`:`Score: ${totalPoints} — buiten top 10`;
+  });
+  document.getElementById('hsEntryScreen').classList.remove('hidden');
+}
+async function submitHighscore(){
+  const name=document.getElementById('hsNameInput').value.trim()||getPlayerName()||'Speler';
+  localStorage.setItem('player_name',name);
+  await saveScore(name,totalPoints,difficulty,gameMode.from+'-'+gameMode.to);
+  showEndWon();
+}
+function skipHighscore(){showEndWon();}
+function showEndWon(){
+  stopConfetti();
+  const e=document.getElementById('endScreen');e.className='screen';
+  document.getElementById('endTitle').textContent='🎉 GEWONNEN!';
+  document.getElementById('endTitle').style.color='#2ecc71';
+  document.getElementById('endEmoji').textContent='🏆';
+  document.getElementById('endStats').textContent=`Punten: ${totalPoints}\nGoede antwoorden: ${score}/10\nMoeilijkheid: ${difficulty.toUpperCase()}\nBaas verslagen: ${bossPokemon?.name||'?'}`;
+  showScreen('endScreen');e.classList.remove('hidden');
+}
+
+// ===== ONLINE SCORES =====
+const HS_KEY='eevee_hs_v2_';
+async function saveScore(name,sc,diff,mode){
+  try{
+    const existing=await loadScores(diff);
+    const entry={name,score:sc,mode,date:new Date().toLocaleDateString('nl-NL'),ts:Date.now()};
+    const updated=[...existing,entry].sort((a,b)=>b.score-a.score).slice(0,10);
+    await window.storage.set(HS_KEY+diff,JSON.stringify(updated),true);
+  }catch(e){console.warn('Score save failed:',e);}
+}
+async function loadScores(diff){
+  try{const r=await window.storage.get(HS_KEY+diff,true);return r?JSON.parse(r.value):[];}
+  catch(e){return[];}
+}
+
+let currentHSDiff='easy';
+function showHSList(){showScreen('hsListScreen');document.getElementById('hsListScreen').classList.remove('hidden');currentHSDiff='easy';document.querySelectorAll('.hs-tab').forEach((t,i)=>t.classList.toggle('active',i===0));renderHSTable('easy');}
+function switchHSTab(diff,el){document.querySelectorAll('.hs-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');currentHSDiff=diff;renderHSTable(diff);}
+async function renderHSTable(diff){
+  const cont=document.getElementById('hsContent');
+  cont.innerHTML='<div class="hs-loading">Laden...</div>';
+  const scores=await loadScores(diff);
+  if(!scores.length){cont.innerHTML='<div class="hs-loading">Nog geen scores!</div>';return;}
+  const myName=getPlayerName();
+  let html='<table class="hs-table"><tr><th>#</th><th>Naam</th><th>Punten</th><th>Modus</th><th>Datum</th></tr>';
+  scores.forEach((s,i)=>{
+    const mine=myName&&s.name===myName;
+    html+=`<tr class="${mine?'my-score':''}"><td>${['🥇','🥈','🥉'][i]||'#'+(i+1)}</td><td>${s.name}</td><td>${s.score}</td><td>${s.mode||'-'}</td><td>${s.date||'-'}</td></tr>`;
+  });
+  html+='</table>';cont.innerHTML=html;
+}
+
+// ===== ADMIN =====
+let adminUnlocked=false;
+function openAdmin(){adminUnlocked?showAdminPanel():(document.getElementById('passwordScreen').classList.add('open'),document.getElementById('pwInput').value='',document.getElementById('pwError').style.display='none',setTimeout(()=>document.getElementById('pwInput').focus(),100));}
+function closePasswordScreen(){document.getElementById('passwordScreen').classList.remove('open');}
+function checkPw(){const v=document.getElementById('pwInput').value;if(v===getPassword()){adminUnlocked=true;closePasswordScreen();showAdminPanel();}else{document.getElementById('pwError').style.display='block';document.getElementById('pwInput').value='';}}
+function showAdminPanel(){loadAdminWords();document.getElementById('playerNameInput').value=getPlayerName();document.getElementById('adminOverlay').classList.add('open');}
+function closeAdmin(){document.getElementById('adminOverlay').classList.remove('open');}
+function loadAdminWords(){document.getElementById('nlFrWords').value=getWords('nl-fr');document.getElementById('nlEnWords').value=getWords('nl-en');updateWordCounts();}
+function updateWordCounts(){
+  const a=document.getElementById('nlFrWords').value.split('\n').filter(l=>l.trim()&&l.includes(',')).length;
+  const b=document.getElementById('nlEnWords').value.split('\n').filter(l=>l.trim()&&l.includes(',')).length;
+  document.getElementById('nlFrCount').textContent=`${a} woordparen`;
+  document.getElementById('nlEnCount').textContent=`${b} woordparen`;
+}
+document.getElementById('nlFrWords').addEventListener('input',updateWordCounts);
+document.getElementById('nlEnWords').addEventListener('input',updateWordCounts);
+function saveWords(pair){const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';localStorage.setItem('words_'+pair,document.getElementById(id).value.trim());updateWordCounts();const btn=event.target,orig=btn.textContent;btn.textContent='✅ Opgeslagen!';setTimeout(()=>btn.textContent=orig,1500);}
+function loadDefault(pair){const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';document.getElementById(id).value=pair==='nl-fr'?DEFAULT_NL_FR:DEFAULT_NL_EN;updateWordCounts();}
+function clearWords(pair){if(!confirm('Zeker weten?'))return;const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';document.getElementById(id).value='';localStorage.removeItem('words_'+pair);updateWordCounts();}
+function savePlayerName(){const n=document.getElementById('playerNameInput').value.trim();if(!n)return;localStorage.setItem('player_name',n);const m=document.getElementById('playerNameMsg');m.textContent='✅ Naam opgeslagen!';m.style.display='block';setTimeout(()=>m.style.display='none',1800);}
+function changePw(){const p1=document.getElementById('newPw1').value,p2=document.getElementById('newPw2').value,m=document.getElementById('pwChangeMsg');if(!p1){m.textContent='Voer wachtwoord in';m.style.color='#e74c3c';m.style.display='block';return;}if(p1!==p2){m.textContent='Komen niet overeen';m.style.color='#e74c3c';m.style.display='block';return;}localStorage.setItem('admin_pw',p1);m.textContent='✅ Gewijzigd!';m.style.color='#2ecc71';m.style.display='block';document.getElementById('newPw1').value='';document.getElementById('newPw2').value='';setTimeout(()=>m.style.display='none',2000);}
+function switchAdminTab(name,el){document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('tab-'+name).classList.add('active');}
+
+// ===== UTILS =====
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+document.getElementById('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPw();});
+document.getElementById('hsNameInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitHighscore();});
+resizeCanvas();updateWordCounts();
+</script>
+</body>
+</html>
