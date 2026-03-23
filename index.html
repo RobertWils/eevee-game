@@ -268,10 +268,12 @@ textarea:focus{border-color:var(--pixel);}
       <textarea id="nlFrWords"></textarea>
       <div class="word-count" id="nlFrCount"></div>
       <div class="admin-actions">
-        <button class="btn btn-green" onclick="saveWords('nl-fr')" style="font-size:7px">💾 Opslaan</button>
+        <button class="btn btn-green" onclick="saveWords('nl-fr')" style="font-size:7px">💾 Lokaal opslaan</button>
+        <button class="btn btn-blue" onclick="syncWordsOnline('nl-fr',this)" style="font-size:7px">🌐 Deel met alle apparaten</button>
         <button class="btn btn-gray" onclick="loadDefault('nl-fr')" style="font-size:7px">📥 Standaard</button>
         <button class="btn btn-red" onclick="clearWords('nl-fr')" style="font-size:7px">🗑 Wissen</button>
       </div>
+      <div class="admin-hint" style="margin-top:6px">💡 <b>Deel met alle apparaten</b> = jouw dochter krijgt deze woorden automatisch bij het starten van het spel.</div>
     </div>
     <div class="tab-content" id="tab-nl-en">
       <span class="admin-label">🇳🇱 Nederlands ↔ 🇬🇧 Engels</span>
@@ -279,10 +281,12 @@ textarea:focus{border-color:var(--pixel);}
       <textarea id="nlEnWords"></textarea>
       <div class="word-count" id="nlEnCount"></div>
       <div class="admin-actions">
-        <button class="btn btn-green" onclick="saveWords('nl-en')" style="font-size:7px">💾 Opslaan</button>
+        <button class="btn btn-green" onclick="saveWords('nl-en')" style="font-size:7px">💾 Lokaal opslaan</button>
+        <button class="btn btn-blue" onclick="syncWordsOnline('nl-en',this)" style="font-size:7px">🌐 Deel met alle apparaten</button>
         <button class="btn btn-gray" onclick="loadDefault('nl-en')" style="font-size:7px">📥 Standaard</button>
         <button class="btn btn-red" onclick="clearWords('nl-en')" style="font-size:7px">🗑 Wissen</button>
       </div>
+      <div class="admin-hint" style="margin-top:6px">💡 <b>Deel met alle apparaten</b> = jouw dochter krijgt deze woorden automatisch bij het starten van het spel.</div>
     </div>
     <div class="tab-content" id="tab-settings">
       <span class="admin-label">👤 Spelersnaam</span>
@@ -366,8 +370,25 @@ function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classL
 function selectMode(f,t){gameMode={from:f,to:t};showScreen('diffScreen');}
 
 // ===== STORAGE =====
+const WORDS_CLOUD_KEY='eevee_words_v1_';
 function getWords(pair){return localStorage.getItem('words_'+pair)||(pair==='nl-fr'?DEFAULT_NL_FR:DEFAULT_NL_EN);}
-function parseWords(pair){return getWords(pair).split('\n').map(l=>l.trim()).filter(l=>l&&l.includes(',')).map(l=>{const p=l.split(',');return{nl:p[0].trim(),other:p[1].trim()};});}
+function parseWordStr(raw){return raw.split('\n').map(l=>l.trim()).filter(l=>l&&l.includes(',')).map(l=>{const p=l.split(',');return{nl:p[0].trim(),other:p[1].trim()};});}
+function parseWords(pair){return parseWordStr(getWords(pair));}
+async function loadWordsOnline(pair){
+  try{if(hasCloudStorage){const r=await window.storage.get(WORDS_CLOUD_KEY+pair,true);if(r&&r.value)return r.value;}}catch(e){}
+  return null;
+}
+async function shareWordsOnline(pair){
+  try{
+    if(hasCloudStorage){
+      const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';
+      const val=document.getElementById(id).value.trim();
+      await window.storage.set(WORDS_CLOUD_KEY+pair,val,true);
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
 function getPassword(){return localStorage.getItem('admin_pw')||'eevee123';}
 function getPlayerName(){return localStorage.getItem('player_name')||'';}
 
@@ -376,9 +397,12 @@ const gameCanvas=document.getElementById('gameCanvas'),ctx=gameCanvas.getContext
 function resizeCanvas(){gameCanvas.width=window.innerWidth;gameCanvas.height=window.innerHeight;playerX=gameCanvas.width/2;playerTargetX=playerX;}
 
 // ===== GAME START =====
-function startGame(diff){
+async function startGame(diff){
   difficulty=diff;
   const pair=(gameMode.from==='fr'||gameMode.to==='fr')?'nl-fr':'nl-en';
+  // Try to load shared online words first
+  const onlineWords=await loadWordsOnline(pair);
+  if(onlineWords){localStorage.setItem('words_'+pair,onlineWords);}
   wordList=parseWords(pair);
   if(wordList.length<3){alert('Te weinig woorden! Voeg minstens 3 toe.');return;}
   score=0;lives=2;totalPoints=0;comboCount=0;usedWords=[];
@@ -795,6 +819,19 @@ function updateWordCounts(){
 document.getElementById('nlFrWords').addEventListener('input',updateWordCounts);
 document.getElementById('nlEnWords').addEventListener('input',updateWordCounts);
 function saveWords(pair){const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';localStorage.setItem('words_'+pair,document.getElementById(id).value.trim());updateWordCounts();const btn=event.target,orig=btn.textContent;btn.textContent='✅ Opgeslagen!';setTimeout(()=>btn.textContent=orig,1500);}
+async function syncWordsOnline(pair,btn){
+  const orig=btn.textContent;
+  btn.textContent='⏳ Bezig...';btn.disabled=true;
+  // First save locally
+  const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';
+  localStorage.setItem('words_'+pair,document.getElementById(id).value.trim());
+  // Then share online
+  const ok=await shareWordsOnline(pair);
+  btn.disabled=false;
+  if(ok){btn.textContent='✅ Gedeeld!';setTimeout(()=>btn.textContent=orig,2000);}
+  else{btn.textContent='⚠ Geen sync';setTimeout(()=>btn.textContent=orig,2000);}
+  updateWordCounts();
+}
 function loadDefault(pair){const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';document.getElementById(id).value=pair==='nl-fr'?DEFAULT_NL_FR:DEFAULT_NL_EN;updateWordCounts();}
 function clearWords(pair){if(!confirm('Zeker weten?'))return;const id=pair==='nl-fr'?'nlFrWords':'nlEnWords';document.getElementById(id).value='';localStorage.removeItem('words_'+pair);updateWordCounts();}
 function savePlayerName(){const n=document.getElementById('playerNameInput').value.trim();if(!n)return;localStorage.setItem('player_name',n);const m=document.getElementById('playerNameMsg');m.textContent='✅ Naam opgeslagen!';m.style.display='block';setTimeout(()=>m.style.display='none',1800);}
