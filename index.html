@@ -658,7 +658,7 @@ function buildMobileSigns(){
   const labels={'-1':'← ','0':'↑ ','1':' →'};
   sorted.forEach(sw=>{
     const btn=document.createElement('button');btn.className='mobile-sign';
-    btn.textContent=labels[sw.dir]+sw.word;btn.dataset.dir=sw.dir;
+    btn.textContent=sw.word;btn.dataset.dir=sw.dir;
     btn.onclick=()=>{if(choiceDelay||!waitingForChoice)return;handleChoice(sw);};
     cont.appendChild(btn);
   });
